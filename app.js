@@ -1,5 +1,5 @@
 // ComplianceDesk v2.0 - Phase 2 (WhatsApp + Email Reminders)
-var CONFIG={GAS_URL:'',APP_NAME:'ComplianceDesk',VERSION:'2.0.0',WORKFLOW_STATES:['PendingData','DataReceived','ValidationFailed','ReadyToFile','Filed','Acknowledged'],WORKFLOW_COLORS:{PendingData:'#f59e0b',DataReceived:'#3b82f6',ValidationFailed:'#ef4444',ReadyToFile:'#8b5cf6',Filed:'#10b981',Acknowledged:'#059669'},WORKFLOW_LABELS:{PendingData:'Pending Data',DataReceived:'Data Received',ValidationFailed:'Validation Failed',ReadyToFile:'Ready to File',Filed:'Filed',Acknowledged:'Acknowledged'},CLIENT_TYPES:['Pvt Ltd','LLP','Proprietorship','Partnership','Trust/Society'],CATEGORIES:['GST','TDS','ROC','Company Law','Director','Income Tax','Audit'],CHANNELS:['WhatsApp','Email','SMS','Phone','In Person'],COMM_TYPES:['Reminder','Follow-up','Acknowledgment','Query','Update','Escalation'],FIRM_NAME:'',FIRM_PHONE:''};
+var CONFIG={GAS_URL:'',APP_NAME:'ComplianceDesk',VERSION:'3.0.0',WORKFLOW_STATES:['PendingData','DataReceived','ValidationFailed','ReadyToFile','Filed','Acknowledged'],WORKFLOW_COLORS:{PendingData:'#f59e0b',DataReceived:'#3b82f6',ValidationFailed:'#ef4444',ReadyToFile:'#8b5cf6',Filed:'#10b981',Acknowledged:'#059669'},WORKFLOW_LABELS:{PendingData:'Pending Data',DataReceived:'Data Received',ValidationFailed:'Validation Failed',ReadyToFile:'Ready to File',Filed:'Filed',Acknowledged:'Acknowledged'},CLIENT_TYPES:['Pvt Ltd','LLP','Proprietorship','Partnership','Trust/Society'],CATEGORIES:['GST','TDS','ROC','Company Law','Director','Income Tax','Audit'],CHANNELS:['WhatsApp','Email','SMS','Phone','In Person'],COMM_TYPES:['Reminder','Follow-up','Acknowledgment','Query','Update','Escalation'],FIRM_NAME:'',FIRM_PHONE:''};
 function isConfigured(){return CONFIG.GAS_URL&&CONFIG.GAS_URL.length>10;}
 var Validators={PAN:function(p){return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(String(p||'').toUpperCase());},GSTIN:function(g){if(!g)return true;return /^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$/.test(String(g).toUpperCase());},CIN:function(c){if(!c)return true;return /^[UL]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/.test(String(c).toUpperCase());},DIN:function(d){if(!d)return true;return /^\d{8}$/.test(String(d));},email:function(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||''));},phone:function(p){if(!p)return true;return /^[6-9]\d{9}$/.test(String(p));}};
 
@@ -44,7 +44,7 @@ function getDash(){ensureInit();var cls=getClients(),cs=getComps(),td=new Date()
 function renderDashboard(el){var d=getDash(),s=d.stats,today=new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});var h='<div class="page-header"><div><h1>Dashboard</h1><div class="subtitle">'+today+'</div></div></div><div class="stat-grid"><div class="stat-card" style="background:#eff6ff"><div class="stat-value" style="color:#3b82f6">'+s.total+'</div><div class="stat-label" style="color:#3b82f6">Total Compliances</div></div><div class="stat-card" style="background:#fef2f2"><div class="stat-value" style="color:#ef4444">'+s.overdue+'</div><div class="stat-label" style="color:#ef4444">Overdue</div></div><div class="stat-card" style="background:#fffbeb"><div class="stat-value" style="color:#f59e0b">'+s.dueThisWeek+'</div><div class="stat-label" style="color:#f59e0b">Due This Week</div></div><div class="stat-card" style="background:#ecfdf5"><div class="stat-value" style="color:#10b981">'+s.filed+'</div><div class="stat-label" style="color:#10b981">Filed</div></div><div class="stat-card" style="background:#f5f3ff"><div class="stat-value" style="color:#8b5cf6">'+s.pendingData+'</div><div class="stat-label" style="color:#8b5cf6">Pending Data</div></div><div class="stat-card" style="background:#ecfeff"><div class="stat-value" style="color:#06b6d4">'+s.clientCount+'</div><div class="stat-label" style="color:#06b6d4">Active Clients</div></div></div>';
 h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="card"><div class="card-title">Upcoming Deadlines</div>';d.upcoming.forEach(function(c){var dl=daysLeft(c.Deadline),col=dl.cls==='overdue'?'#ef4444':dl.cls==='due-soon'?'#f59e0b':'#6b7280';h+='<div class="deadline-item '+dl.cls+'"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+c.Name+'</div><div style="font-size:11px;color:#6b7280">'+c.ClientName+'</div></div><div style="text-align:right;margin-right:10px"><div style="font-size:12px;font-weight:700;color:'+col+'">'+dl.label+'</div><div style="font-size:11px;color:#9ca3af">'+c.Deadline+'</div></div><button class="wa-btn-sm" onclick="event.stopPropagation();sendWAReminder(\''+c.ID+'\')" title="Send WhatsApp Reminder">💬</button></div>';});if(!d.upcoming.length)h+='<p style="color:#9ca3af;font-size:13px">All caught up!</p>';h+='</div>';
 h+='<div class="card"><div class="card-title">Category Completion</div>';Object.keys(d.categories).forEach(function(nm){var x=d.categories[nm],pct=x.total?Math.round(x.filed/x.total*100):0;h+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600">'+nm+'</span><span style="font-size:12px;color:#6b7280">'+x.filed+'/'+x.total+(x.overdue>0?' <span style="color:#ef4444">('+x.overdue+' overdue)</span>':'')+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+(x.overdue>0?'linear-gradient(90deg,#10b981,#f59e0b)':'#10b981')+'"></div></div></div>';});h+='</div></div>';
-h+='<div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div class="card-title" style="margin-bottom:0">Client Summary</div></div><div class="table-container" style="border:none"><table class="data-table"><thead><tr><th>Client</th><th>Type</th><th>Total</th><th>Filed</th><th>Pending</th><th>Overdue</th><th>%</th><th>Action</th></tr></thead><tbody>';d.clientSummary.forEach(function(c){var pct=c.total?Math.round(c.filed/c.total*100):0,col=pct>=70?'#10b981':pct>=40?'#f59e0b':'#ef4444';h+='<tr><td style="font-weight:600">'+c.name+'</td><td><span class="tag">'+c.type+'</span></td><td style="font-weight:600">'+c.total+'</td><td style="color:#10b981;font-weight:600">'+c.filed+'</td><td style="color:#f59e0b;font-weight:600">'+c.pending+'</td><td style="color:#ef4444;font-weight:600">'+c.overdue+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:'+pct+'%;background:'+col+'"></div></div><span style="font-size:12px;font-weight:700">'+pct+'%</span></div></td><td>'+(c.phone?'<button class="wa-btn" onclick="event.stopPropagation();sendWASummary(\''+c.id+'\')" title="WhatsApp summary">📱 Send</button>':'<span style="font-size:11px;color:#9ca3af">No phone</span>')+'</td></tr>';});h+='</tbody></table></div></div>';el.innerHTML=h;}
+h+='<div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div class="card-title" style="margin-bottom:0">Client Summary</div></div><div class="table-container" style="border:none"><table class="data-table"><thead><tr><th>Client</th><th>Type</th><th>Total</th><th>Filed</th><th>Pending</th><th>Overdue</th><th>%</th><th>Action</th></tr></thead><tbody>';d.clientSummary.forEach(function(c){var pct=c.total?Math.round(c.filed/c.total*100):0,col=pct>=70?'#10b981':pct>=40?'#f59e0b':'#ef4444';h+='<tr><td style="font-weight:600">'+c.name+'</td><td><span class="tag">'+c.type+'</span></td><td style="font-weight:600">'+c.total+'</td><td style="color:#10b981;font-weight:600">'+c.filed+'</td><td style="color:#f59e0b;font-weight:600">'+c.pending+'</td><td style="color:#ef4444;font-weight:600">'+c.overdue+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:'+pct+'%;background:'+col+'"></div></div><span style="font-size:12px;font-weight:700">'+pct+'%</span></div></td><td style="white-space:nowrap">'+(c.phone?'<button class="wa-btn-sm" onclick="event.stopPropagation();sendWASummary(\''+c.id+'\')" title="WhatsApp summary" style="margin-right:4px">📱</button>':'')+'<button class="wa-btn-sm" onclick="event.stopPropagation();generateClientReport(\''+c.id+'\')" title="PDF Report" style="background:#8b5cf615">📄</button></td></tr>';});h+='</tbody></table></div></div>';el.innerHTML=h;}
 
 // CLIENTS
 function renderClients(el){var cls=getClients(),cs=getComps();window._cls=cls;window._cs=cs;el.innerHTML='<div class="page-header"><div><h1>Clients</h1><div class="subtitle">'+cls.length+' registered</div></div><button class="btn btn-primary" onclick="showClientForm()">+ Add Client</button></div><div class="search-box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="form-input" id="cSearch" placeholder="Search..." oninput="filterCl()"></div><div id="cList"></div>';filterCl();}
@@ -58,7 +58,7 @@ function renderCalendar(el){window._calCs=getComps();_calF='all';_calC='all';var
 function setCalF(f){_calF=f;document.querySelectorAll('.filter-btn').forEach(function(e){e.classList.toggle('active',e.dataset.filter===f);});renderCalTbl();}
 function setCalC(c){_calC=c;renderCalTbl();}
 function renderCalTbl(){var all=window._calCs||[],td=new Date().toISOString().split('T')[0],n7=new Date(Date.now()+7*86400000).toISOString().split('T')[0],f=all;if(_calF==='overdue')f=f.filter(function(c){return c.Deadline<td&&c.Status!=='Filed'&&c.Status!=='Acknowledged';});if(_calF==='week')f=f.filter(function(c){return c.Deadline>=td&&c.Deadline<=n7&&c.Status!=='Filed'&&c.Status!=='Acknowledged';});if(_calF==='pending')f=f.filter(function(c){return c.Status==='PendingData';});if(_calF==='filed')f=f.filter(function(c){return c.Status==='Filed'||c.Status==='Acknowledged';});if(_calC!=='all')f=f.filter(function(c){return c.Category===_calC;});f.sort(function(a,b){return(a.Deadline||'').localeCompare(b.Deadline||'');});var h='<table class="data-table"><thead><tr><th>Client</th><th>Compliance</th><th>Category</th><th>Period</th><th>Deadline</th><th>Status</th><th>Assigned</th><th>WhatsApp</th></tr></thead><tbody>';f.forEach(function(c){var dl=daysLeft(c.Deadline),ov=dl.cls==='overdue'&&c.Status!=='Filed'&&c.Status!=='Acknowledged',dc=ov?'#ef4444':dl.cls==='due-soon'?'#f59e0b':'#374151',showWA=c.Status!=='Filed'&&c.Status!=='Acknowledged';h+='<tr style="background:'+(ov?'#fef2f2':'transparent')+'"><td style="font-weight:600;cursor:pointer" onclick="showCompDtl(\''+c.ID+'\')">'+c.ClientName+'</td><td>'+c.Name+'</td><td><span class="badge-sm" style="background:#f3f4f6">'+c.Category+'</span></td><td style="color:#6b7280">'+(c.Period||'')+'</td><td><span style="font-weight:600;color:'+dc+'">'+c.Deadline+'</span></td><td>'+statusBadge(c.Status)+'</td><td style="color:#6b7280">'+(c.AssignedTo||'-')+'</td><td>'+(showWA?'<button class="wa-btn-sm" onclick="sendWAReminder(\''+c.ID+'\')" title="Send WhatsApp">💬</button>':'-')+'</td></tr>';});h+='</tbody></table>';if(!f.length)h+='<p style="text-align:center;padding:40px;color:#9ca3af">No items</p>';document.getElementById('calTbl').innerHTML=h;}
-function showCompDtl(id){var c=(window._calCs||getComps()).find(function(x){return x.ID===id;});if(!c)return;var sb=CONFIG.WORKFLOW_STATES.map(function(st,i){var ci=CONFIG.WORKFLOW_STATES.indexOf(c.Status),cur=st===c.Status,past=i<ci,col=CONFIG.WORKFLOW_COLORS[st];return'<button onclick="advComp(\''+id+'\',\''+st+'\')" style="flex:1;padding:8px 4px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;background:'+(cur?col:past?col+'30':'#f3f4f6')+';color:'+(cur?'#fff':past?col:'#9ca3af')+';border:2px solid '+(cur?col:'transparent')+';font-family:inherit">'+CONFIG.WORKFLOW_LABELS[st]+'</button>';}).join('');openModal('Compliance Detail','<div class="form-row" style="margin-bottom:16px"><div><span style="font-size:11px;color:#6b7280;font-weight:600">CLIENT</span><div style="font-weight:700">'+c.ClientName+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">COMPLIANCE</span><div style="font-weight:700">'+c.Name+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">DEADLINE</span><div style="font-weight:600">'+c.Deadline+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">STATUS</span><div>'+statusBadge(c.Status)+'</div></div></div><div style="margin-bottom:20px"><span style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px">WORKFLOW</span><div style="display:flex;gap:4px">'+sb+'</div></div><div class="form-row"><div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="cd_at" value="'+(c.AssignedTo||'')+'"></div><div class="form-group"><label class="form-label">Filing Date</label><input class="form-input" type="date" id="cd_fd" value="'+(c.FilingDate||'')+'"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Ack Number</label><input class="form-input" id="cd_ack" value="'+(c.AckNumber||'')+'"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="cd_notes">'+(c.Notes||'')+'</textarea></div><div class="modal-footer"><button class="btn btn-accent" onclick="sendWAReminder(\''+id+'\')">📱 WhatsApp Reminder</button><button class="btn btn-secondary" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="saveCompDtl(\''+id+'\')">Save</button></div>');}
+function showCompDtl(id){var c=(window._calCs||getComps()).find(function(x){return x.ID===id;});if(!c)return;var sb=CONFIG.WORKFLOW_STATES.map(function(st,i){var ci=CONFIG.WORKFLOW_STATES.indexOf(c.Status),cur=st===c.Status,past=i<ci,col=CONFIG.WORKFLOW_COLORS[st];return'<button onclick="advComp(\''+id+'\',\''+st+'\')" style="flex:1;padding:8px 4px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;background:'+(cur?col:past?col+'30':'#f3f4f6')+';color:'+(cur?'#fff':past?col:'#9ca3af')+';border:2px solid '+(cur?col:'transparent')+';font-family:inherit">'+CONFIG.WORKFLOW_LABELS[st]+'</button>';}).join('');openModal('Compliance Detail','<div class="form-row" style="margin-bottom:16px"><div><span style="font-size:11px;color:#6b7280;font-weight:600">CLIENT</span><div style="font-weight:700">'+c.ClientName+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">COMPLIANCE</span><div style="font-weight:700">'+c.Name+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">DEADLINE</span><div style="font-weight:600">'+c.Deadline+'</div></div><div><span style="font-size:11px;color:#6b7280;font-weight:600">STATUS</span><div>'+statusBadge(c.Status)+'</div></div></div><div style="margin-bottom:20px"><span style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px">WORKFLOW</span><div style="display:flex;gap:4px">'+sb+'</div></div><div class="form-row"><div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="cd_at" value="'+(c.AssignedTo||'')+'"></div><div class="form-group"><label class="form-label">Filing Date</label><input class="form-input" type="date" id="cd_fd" value="'+(c.FilingDate||'')+'"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Ack Number</label><input class="form-input" id="cd_ack" value="'+(c.AckNumber||'')+'"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="cd_notes">'+(c.Notes||'')+'</textarea></div><div class="modal-footer"><button class="btn btn-accent" onclick="sendWAReminder(\''+id+'\')">📱 WhatsApp Reminder</button><button class="btn btn-secondary" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="saveCompDtl(\''+id+'\')">Save</button></div>'+renderDocChecklist(id,c.Name));}
 function advComp(id,st){var fd=document.getElementById('cd_fd')?document.getElementById('cd_fd').value:'';var r=apiUpdateComp(id,{status:st,filingDate:fd});if(r.success){showToast('Updated','success');closeModal();window._calCs=getComps();renderCalTbl();}else showToast((r.errors||['Error']).join(', '),'error');}
 function saveCompDtl(id){var r=apiUpdateComp(id,{assignedTo:document.getElementById('cd_at').value,filingDate:document.getElementById('cd_fd').value,ackNumber:document.getElementById('cd_ack').value,notes:document.getElementById('cd_notes').value});if(r.success){showToast('Saved','success');closeModal();window._calCs=getComps();renderCalTbl();}else showToast((r.errors||['Error']).join(', '),'error');}
 
@@ -94,6 +94,112 @@ function saveGas(){var u=document.getElementById('set_url').value.trim();CONFIG.
 function saveFirm(){var fn=document.getElementById('set_firm').value.trim();_s.set('firmName',fn);showToast('Firm name saved','success');}
 function resetDemo(){if(!confirm('Reset demo data?'))return;Object.keys(localStorage).filter(function(k){return k.startsWith('cd_');}).forEach(function(k){localStorage.removeItem(k);});showToast('Reset','success');setTimeout(function(){navigateTo('dashboard');},500);}
 function clearAll(){if(!confirm('Clear ALL data?'))return;Object.keys(localStorage).filter(function(k){return k.startsWith('cd_');}).forEach(function(k){localStorage.removeItem(k);});showToast('Cleared','info');navigateTo('dashboard');}
+
+// ============================================================
+// DOCUMENT CHECKLISTS (Phase 3)
+// ============================================================
+var DOC_CHECKLISTS={
+  'GSTR-1':['Sales invoices','Credit/debit notes','HSN summary','Export invoices','Advances received'],
+  'GSTR-3B':['Output tax summary','Input tax credit details','ITC reversal details','Interest/late fee calculation','Bank statement for tax payment'],
+  'TDS Return (24Q)':['Salary register','Form 16 draft','PAN of employees','TDS challans','Investment declarations'],
+  'TDS Return':['TDS payment challans','Deductee PAN details','Section-wise TDS summary','Lower deduction certificates','Bank statements'],
+  'ROC MGT-7':['Board resolution','Share capital details','Shareholder list','Transfer details','Minutes of AGM/EGM'],
+  'ROC AOC-4':['Audited financial statements','Board report','Auditor report','Director responsibility statement','CSR report (if applicable)'],
+  'LLP Form 11':['Partner details','Contribution details','Body corporate as partner details','Changes in partners'],
+  'LLP Form 8':['Statement of accounts','Solvency statement','Signed by designated partners'],
+  'Board Meeting':['Agenda items','Previous meeting minutes','Director attendance','Resolutions passed','Financial review documents'],
+  'DIR-3 KYC':['Director PAN','Aadhaar card','Passport (if applicable)','Mobile & email verification','Residential proof'],
+  'Income Tax Return':['Form 16/16A','Bank statements (all accounts)','Investment proofs (80C, 80D etc.)','Capital gains details','Rental income details','Foreign income/assets details','TDS certificates','Advance tax challans']
+};
+
+function getChecklist(compName){
+  var cl=DOC_CHECKLISTS[compName];
+  if(cl)return cl;
+  // Partial match
+  var keys=Object.keys(DOC_CHECKLISTS);
+  for(var i=0;i<keys.length;i++){if(compName.indexOf(keys[i])>=0)return DOC_CHECKLISTS[keys[i]];}
+  return['Document 1','Document 2','Document 3'];
+}
+
+function getCheckState(compId){return _s.get('chk_'+compId)||{};}
+function setCheckState(compId,state){_s.set('chk_'+compId,state);}
+
+function toggleDoc(compId,idx){
+  var st=getCheckState(compId);
+  st[idx]=!st[idx];
+  setCheckState(compId,st);
+  // Update UI
+  var el=document.getElementById('dchk_'+compId+'_'+idx);
+  if(el){el.className=st[idx]?'doc-item checked':'doc-item';el.querySelector('.doc-check').textContent=st[idx]?'✅':'⬜';}
+  // Update counter
+  var docs=getChecklist(window._chkCompName||'');
+  var done=0;docs.forEach(function(_,i){if(st[i])done++;});
+  var ctr=document.getElementById('dchk_count_'+compId);
+  if(ctr)ctr.textContent=done+'/'+docs.length+' received';
+  var pct=docs.length?Math.round(done/docs.length*100):0;
+  var bar=document.getElementById('dchk_bar_'+compId);
+  if(bar)bar.style.width=pct+'%';
+}
+
+function renderDocChecklist(compId,compName){
+  window._chkCompName=compName;
+  var docs=getChecklist(compName),st=getCheckState(compId);
+  var done=0;docs.forEach(function(_,i){if(st[i])done++;});
+  var pct=docs.length?Math.round(done/docs.length*100):0;
+  var h='<div style="margin-top:16px;padding:16px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:13px;font-weight:700">📄 Document Checklist</span><span id="dchk_count_'+compId+'" style="font-size:12px;color:#6b7280">'+done+'/'+docs.length+' received</span></div>';
+  h+='<div class="progress-bar" style="margin-bottom:12px"><div id="dchk_bar_'+compId+'" class="progress-fill" style="width:'+pct+'%;background:'+(pct===100?'#10b981':pct>=50?'#f59e0b':'#ef4444')+'"></div></div>';
+  docs.forEach(function(doc,i){
+    var checked=!!st[i];
+    h+='<div id="dchk_'+compId+'_'+i+'" class="doc-item'+(checked?' checked':'')+'" onclick="toggleDoc(\''+compId+'\','+i+')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1px solid '+(checked?'#bbf7d0':'#e5e7eb')+';background:'+(checked?'#f0fdf4':'#fff')+';transition:all .15s">';
+    h+='<span class="doc-check" style="font-size:16px">'+(checked?'✅':'⬜')+'</span>';
+    h+='<span style="font-size:13px;'+(checked?'text-decoration:line-through;color:#9ca3af':'color:#374151')+'">'+doc+'</span></div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+// ============================================================
+// PDF REPORT GENERATION (Phase 3)
+// ============================================================
+function generateClientReport(clientId){
+  var cls=getClients(),cl=cls.find(function(x){return x.ID===clientId;});
+  if(!cl){showToast('Client not found','error');return;}
+  var cs=getComps({clientId:clientId});
+  var td=new Date().toISOString().split('T')[0];
+  var firm=_s.get('firmName')||'ComplianceDesk';
+  var today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+
+  var filed=cs.filter(function(c){return c.Status==='Filed'||c.Status==='Acknowledged';}).length;
+  var overdue=cs.filter(function(c){return c.Deadline<td&&c.Status!=='Filed'&&c.Status!=='Acknowledged';}).length;
+  var pending=cs.filter(function(c){return c.Status!=='Filed'&&c.Status!=='Acknowledged';}).length;
+  var pct=cs.length?Math.round(filed/cs.length*100):0;
+
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Compliance Report - '+cl.LegalName+'</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#333;padding:40px}h1{font-size:20px;color:#1a1a2e}h2{font-size:15px;color:#1a1a2e;margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid #e5e7eb}table{width:100%;border-collapse:collapse;margin:10px 0}th{background:#1a1a2e;color:#fff;padding:8px 10px;text-align:left;font-size:11px}td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px}.overdue{color:#ef4444;font-weight:700}.filed{color:#10b981}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e}.stat{display:inline-block;padding:8px 16px;border-radius:6px;margin-right:8px;font-weight:700;font-size:13px}.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}@media print{body{padding:20px}}</style></head><body>';
+  html+='<div class="header"><div><h1>'+firm+'</h1><p style="color:#6b7280;margin-top:4px">Compliance Status Report</p></div><div style="text-align:right"><p style="font-weight:700;font-size:14px">'+cl.LegalName+'</p><p style="color:#6b7280">'+cl.ClientType+' | PAN: '+cl.PAN+'</p>'+(cl.GSTIN?'<p style="color:#6b7280">GSTIN: '+cl.GSTIN+'</p>':'')+'<p style="color:#6b7280">Generated: '+today+'</p></div></div>';
+
+  html+='<div style="display:flex;gap:12px;margin-bottom:20px"><span class="stat" style="background:#eff6ff;color:#3b82f6">Total: '+cs.length+'</span><span class="stat" style="background:#ecfdf5;color:#10b981">Filed: '+filed+'</span><span class="stat" style="background:#fef2f2;color:#ef4444">Overdue: '+overdue+'</span><span class="stat" style="background:#fffbeb;color:#f59e0b">Pending: '+pending+'</span><span class="stat" style="background:#f5f3ff;color:#8b5cf6">Completion: '+pct+'%</span></div>';
+
+  if(overdue>0){
+    html+='<h2 style="color:#ef4444">Overdue Items</h2><table><tr><th>Compliance</th><th>Category</th><th>Deadline</th><th>Days Overdue</th><th>Status</th></tr>';
+    cs.filter(function(c){return c.Deadline<td&&c.Status!=='Filed'&&c.Status!=='Acknowledged';}).sort(function(a,b){return a.Deadline.localeCompare(b.Deadline);}).forEach(function(c){var dl=daysLeft(c.Deadline);html+='<tr><td><strong>'+c.Name+'</strong></td><td>'+c.Category+'</td><td class="overdue">'+c.Deadline+'</td><td class="overdue">'+Math.abs(dl.days)+' days</td><td>'+c.Status+'</td></tr>';});
+    html+='</table>';
+  }
+
+  html+='<h2>All Compliances</h2><table><tr><th>#</th><th>Compliance</th><th>Category</th><th>Period</th><th>Deadline</th><th>Status</th><th>Assigned</th></tr>';
+  cs.sort(function(a,b){return(a.Deadline||'').localeCompare(b.Deadline||'');}).forEach(function(c,i){
+    var isFiled=c.Status==='Filed'||c.Status==='Acknowledged';
+    var isOv=c.Deadline<td&&!isFiled;
+    html+='<tr><td>'+(i+1)+'</td><td><strong>'+c.Name+'</strong></td><td>'+c.Category+'</td><td>'+(c.Period||'')+'</td><td class="'+(isOv?'overdue':isFiled?'filed':'')+'">'+c.Deadline+'</td><td><span class="badge" style="background:'+(isFiled?'#ecfdf5;color:#059669':isOv?'#fef2f2;color:#ef4444':'#fffbeb;color:#92400e')+'">'+c.Status+'</span></td><td>'+(c.AssignedTo||'-')+'</td></tr>';
+  });
+  html+='</table>';
+  html+='<div style="margin-top:30px;padding-top:16px;border-top:2px solid #e5e7eb;color:#9ca3af;font-size:10px"><p>This report was generated by ComplianceDesk on '+today+'. For queries contact '+firm+'.</p></div></body></html>';
+
+  var win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  showToast('Report opened. Use Ctrl+P to save as PDF.','success');
+}
 
 // INIT
 document.addEventListener('DOMContentLoaded',function(){updateConnectionStatus();navigateTo('dashboard');});
